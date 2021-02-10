@@ -1,0 +1,41 @@
+
+version: "3.5"
+
+services:
+  nginx:
+    image: nginx:stable-alpine
+    volumes:
+      - ./data/nginx:/etc/nginx/conf.d
+      - ./data/nginxlog:/var/log/nginx
+    ports:
+      - mode: host
+        protocol: tcp
+        published: 80
+        target: 80
+      - mode: host
+        protocol: tcp
+        published: 443
+        target: 443
+    depends_on:
+      - app
+    deploy:
+      restart_policy:
+        condition: any
+    command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
+
+  app:
+    image: registry.gitlab.com/pymba86/webotix:latest
+    volumes:
+      - ./data/webotix/db:/app/db
+      - ./data/secret:/run/secrets:ro
+    ports:
+      - "9090:9090"
+    environment:
+      - PROXIED=true
+      - LOG_LEVEL=INFO
+      - WHITELIST_EXPIRY_SECONDS=866000
+      - SIMPLE_AUTH_TOKEN_EXPIRY_MINUTES=7500
+      - JDBC_URL='h2:file:/app/db/webotix;DB_CLOSE_DELAY=-1;DEFAULT_LOCK_TIMEOUT=60000'
+    deploy:
+      restart_policy:
+        condition: any
